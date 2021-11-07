@@ -1,6 +1,6 @@
 export class Box {
-    private x: number;
-    private y: number;
+    public x: number;
+    public y: number;
 
     public offsetX: number = 0;
     public offsetY: number = 0;
@@ -26,5 +26,24 @@ export class Box {
         context.fillStyle = this.color;
         context.fillRect(this.x + this.offsetX, this.y + this.offsetY, this.width, this.height);
         context.fillStyle = oldFillStyle;
+    }
+
+    /**
+     * Gets called if the box was clicked.
+     */
+    public onClick(): void {
+        this.color = "green";
+    }
+
+    /**
+     * Checks if coordinates are inside of the current box.
+     * @param x coordinate
+     * @param y coordinate
+     * @returns whether the coordinates match
+     */
+    public isColliding(x: number, y: number): boolean {
+        console.log("Collison: ", this.x + this.offsetX, this.y + this.offsetY);
+        return (x > this.x + this.offsetX && x < this.x + this.offsetX + this.width)
+            && (y > this.y + this.offsetY && y < this.y + this.offsetY + this.height);
     }
 }
