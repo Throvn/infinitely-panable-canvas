@@ -3,7 +3,7 @@ const path = require("path");
 
 module.exports = {
   mode: "development",
-  entry: "./src/index.ts",
+  entry: { app: ["./src/objects.ts", "./src/index.ts"] },
   module: {
     rules: [
       {
@@ -17,7 +17,7 @@ module.exports = {
     extensions: [".tsx", ".ts", ".js"],
   },
   output: {
-    filename: "bundle.js",
+    filename: "[name].js",
     path: path.resolve(__dirname, "dist"),
   },
   plugins: [new NodePolyfillPlugin()],
