@@ -1,7 +1,7 @@
+import Colors from "./colors";
 const $canvas = <HTMLCanvasElement>document.getElementById("cnvs")!;
-const bounds = $canvas.getBoundingClientRect();
 
-import { Box, Connection, TextBox } from "./objects";
+import { Box, Connection, ClassBox } from "./objects";
 
 
 enum ConnectionStates {
@@ -29,7 +29,7 @@ const store: Store = {
         x: 0,
         y: 0,
     },
-    boxes: Array<Box>(new TextBox(10, 10), new TextBox(200, 300)),
+    boxes: Array<Box>(),
     selectedBox: null,
     connecting: ConnectionStates.NONE,
     connections: Array<Connection>(),
@@ -53,21 +53,24 @@ context.font = "18px verdana";
 context.lineWidth = 5;
 context.lineCap = "round";
 
-// draw boxes once initially
+
+// draw boxes & connections once initially
 for (const box of store.boxes) {
     box.drawOnto(context);
 }
 
 
-// On double click spawn new TextBox
+// On double click spawn new ClassBox
 document.body.addEventListener("dblclick", (ev: MouseEvent): void => {
-    store.boxes.push(new TextBox(ev.clientX, ev.clientY));
+    const msg: string = "First ClassBox";
+    store.boxes.push(new ClassBox(msg, ev.clientX, ev.clientY, context.measureText(msg).width));
     store.boxes.at(-1)?.drawOnto(context);
 });
 
 // listen for key events (shortcuts for faster use)
 document.body.addEventListener("keyup", (ev: KeyboardEvent): void => {
     switch (ev.key) {
+        case "A":
         case "a":
             store.connecting = store.selectedBox !== null ? ConnectionStates.START : ConnectionStates.EMPTY;
             console.log("CONNECTING...");
@@ -142,15 +145,18 @@ $canvas.addEventListener("pointerdown", (ev: MouseEvent): void => {
             // check if connection has to be drawn
             if (store.connecting === ConnectionStates.NONE) {
                 store.selectedBox = box;
+                updateUi(store.selectedBox);
 
-                box.color = "#FF0000";
-                box.onClick();
+                box.color = Colors.grey;
+                box.onClick(context);
                 box.drawOnto(context);
 
                 $canvas.addEventListener("pointermove", startDragSelectedBox);
             } else if (store.connecting === ConnectionStates.EMPTY && !store.dragging) {
                 store.selectedBox = box;
-                box.color = "#00FF00";
+                updateUi(store.selectedBox);
+
+                box.color = Colors.grey;
                 box.drawOnto(context);
                 store.connecting = ConnectionStates.START;
 
@@ -175,16 +181,18 @@ $canvas.addEventListener("pointerdown", (ev: MouseEvent): void => {
  * Stops listening for drag changes
  */
 function cancelDrag(): void {
+
     // deregister pan event if click ended
     $canvas.removeEventListener("pointermove", startDrag);
     // deregister dragging of selected box, if thats the case
     if (store.selectedBox !== null) {
+        store.selectedBox!.color = Colors.white;
         $canvas.removeEventListener("pointermove", startDragSelectedBox);
     }
 
-    if (store.connecting === ConnectionStates.NONE) {
-        store.selectedBox = null;
-    }
+    // if (store.connecting === ConnectionStates.NONE) {
+    //     store.selectedBox = null;
+    // }
 }
 
 // Handle stop of drag gesture
@@ -221,7 +229,7 @@ function startConnection(ev: MouseEvent): void {
     }
     repaintCanvas();
 
-    context.strokeStyle = "#000000";
+    context.strokeStyle = Colors.black;
 
     context.beginPath();
     context.moveTo(store.selectedBox.getX + store.selectedBox.width * 0.5 + store.offset.x, store.selectedBox.getY + store.selectedBox.height * 0.5 + store.offset.y);
@@ -246,6 +254,10 @@ function repaintCanvas() {
         // later you could only draw the boxes in the viewport
         box.drawOnto(context);
     }
+
+    if (store.selectedBox !== null) {
+        store.selectedBox.drawSelectedOnto(context);
+    }
 }
 
 /**
@@ -257,10 +269,29 @@ function resetAll() {
     $canvas.removeEventListener("pointermove", startDrag);
     $canvas.removeEventListener("pointermove", startDragSelectedBox);
 
-    store.selectedBox = null;
-
     $canvas.removeEventListener("pointermove", startConnection);
     store.connecting = ConnectionStates.NONE;
 
     repaintCanvas();
+}
+
+// Get changes from the sidebar
+// and save them in realtime in the 
+// obect structure
+const $className = <HTMLInputElement>document.getElementById("input-class-name");
+
+$className.addEventListener("input", (ev: Event) => {
+    if (store.selectedBox instanceof ClassBox) {
+        console.log($className.value)
+        const textWidth: TextMetrics = context.measureText($className.value);
+        store.selectedBox.changeTitle($className.value, textWidth.width);
+        repaintCanvas();
+    }
+});
+
+function updateUi(selectedBox: Box) {
+    console.log("updateUi")
+    if (selectedBox instanceof ClassBox) {
+        $className.value = selectedBox.getData.title;
+    }
 }
