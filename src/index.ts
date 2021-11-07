@@ -1,17 +1,38 @@
 const $canvas = <HTMLCanvasElement>document.getElementById("cnvs")!;
 const bounds = $canvas.getBoundingClientRect();
 
-import { Box } from "./objects";
+import { Box, Connection, TextBox } from "./objects";
+
+
+enum ConnectionStates {
+    NONE,
+    EMPTY,
+    START
+}
+
+interface Store {
+    dragging: boolean;
+    offset: {
+        x: number;
+        y: number;
+    };
+    boxes: Box[];
+    connections: Connection[];
+    selectedBox: Box | null;
+    connecting: ConnectionStates;
+}
 
 // global store
-const store = {
+const store: Store = {
     dragging: false,
     offset: {
         x: 0,
         y: 0,
     },
-    boxes: Array<Box>(new Box(10, 10), new Box(200, 1300)),
-    selectedBox: Box.prototype || null,
+    boxes: Array<Box>(new TextBox(10, 10), new TextBox(200, 300)),
+    selectedBox: null,
+    connecting: ConnectionStates.NONE,
+    connections: Array<Connection>(),
 }
 
 /**
@@ -27,10 +48,38 @@ function initializeCanvas(): CanvasRenderingContext2D {
 
 const context = initializeCanvas();
 
+// Set up the basic canvas properties
+context.font = "18px verdana";
+context.lineWidth = 5;
+context.lineCap = "round";
+
 // draw boxes once initially
 for (const box of store.boxes) {
     box.drawOnto(context);
 }
+
+
+// On double click spawn new TextBox
+document.body.addEventListener("dblclick", (ev: MouseEvent): void => {
+    store.boxes.push(new TextBox(ev.clientX, ev.clientY));
+    store.boxes.at(-1)?.drawOnto(context);
+});
+
+// listen for key events (shortcuts for faster use)
+document.body.addEventListener("keyup", (ev: KeyboardEvent): void => {
+    switch (ev.key) {
+        case "a":
+            store.connecting = store.selectedBox !== null ? ConnectionStates.START : ConnectionStates.EMPTY;
+            console.log("CONNECTING...");
+            break;
+        case "Escape":
+            resetAll();
+            break;
+        default:
+            console.log("Key not recognized: ", ev.key);
+            break;
+    }
+});
 
 /**
  * Repaints the canvas with the corrsponding offset
@@ -53,6 +102,11 @@ function startDrag(ev: MouseEvent): void {
         // later you could only draw the boxes in the viewport
         box.drawOnto(context);
     }
+    // iterate through and draw all of the connections
+    for (const connection of store.connections) {
+        // later you could only draw the boxes in the viewport
+        connection.drawOnto(context);
+    }
 }
 
 /**
@@ -71,33 +125,43 @@ function startDragSelectedBox(ev: MouseEvent): void {
     // clear the canvas to not leave any straints
     context.clearRect(0, 0, $canvas.width, $canvas.height);
 
-    box.x += ev.movementX;
-    box.y += ev.movementY;
+    box.addToX(ev.movementX);
+    box.addToY(ev.movementY);
 
-    for (const box of store.boxes) {
-
-        // later you could only draw the boxes in the viewport
-        box.drawOnto(context);
-    }
-
-    // later you could only draw the boxes in the viewport
-    box.drawOnto(context);
-
+    repaintCanvas();
 }
 
 $canvas.addEventListener("pointerdown", (ev: MouseEvent): void => {
 
+    // check if clicked on box
     for (const box of store.boxes) {
         console.log(ev.clientX, ev.clientY);
         if (box.isColliding(ev.clientX, ev.clientY)) {
-            store.selectedBox = box;
-
             console.log("colliding");
-            box.color = "#FF0000";
-            box.onClick();
-            box.drawOnto(context);
 
-            $canvas.addEventListener("pointermove", startDragSelectedBox);
+            // check if connection has to be drawn
+            if (store.connecting === ConnectionStates.NONE) {
+                store.selectedBox = box;
+
+                box.color = "#FF0000";
+                box.onClick();
+                box.drawOnto(context);
+
+                $canvas.addEventListener("pointermove", startDragSelectedBox);
+            } else if (store.connecting === ConnectionStates.EMPTY && !store.dragging) {
+                store.selectedBox = box;
+                box.color = "#00FF00";
+                box.drawOnto(context);
+                store.connecting = ConnectionStates.START;
+
+                $canvas.addEventListener("pointermove", startConnection);
+            } else if (store.connecting === ConnectionStates.START) {
+                console.log("Connecting now...");
+                drawConnectionBetween(store.selectedBox, box);
+            } else {
+                resetAll();
+            }
+
             return;
         }
     }
@@ -117,9 +181,86 @@ function cancelDrag(): void {
     if (store.selectedBox !== null) {
         $canvas.removeEventListener("pointermove", startDragSelectedBox);
     }
+
+    if (store.connecting === ConnectionStates.NONE) {
+        store.selectedBox = null;
+    }
 }
 
 // Handle stop of drag gesture
 $canvas.addEventListener("pointerup", cancelDrag);
 $canvas.addEventListener("pointercancel", cancelDrag);
 $canvas.addEventListener("pointerout", cancelDrag);
+
+/**
+ * Draws the final connection between two boxes.
+ * @param selectedBox 
+ * @param box 
+ */
+function drawConnectionBetween(startBox: Box | null, endBox: Box) {
+    if (store.selectedBox === null) {
+        throw new Error("selectedBox is null!");
+    }
+    $canvas.removeEventListener("pointermove", startConnection);
+
+    const newConnection = new Connection(startBox!, endBox);
+    store.connections.push(newConnection);
+
+    repaintCanvas();
+    store.connecting = ConnectionStates.NONE;
+}
+
+/**
+ * draws line from first box to cursor to indicate a connection.
+ * @param ev 
+ */
+function startConnection(ev: MouseEvent): void {
+
+    if (store.selectedBox === null || store.connecting !== ConnectionStates.START) {
+        return;
+    }
+    repaintCanvas();
+
+    context.strokeStyle = "#000000";
+
+    context.beginPath();
+    context.moveTo(store.selectedBox.getX + store.selectedBox.width * 0.5 + store.offset.x, store.selectedBox.getY + store.selectedBox.height * 0.5 + store.offset.y);
+    context.lineTo(ev.clientX, ev.clientY);
+    context.stroke();
+}
+
+/**
+ * Clears the canvas and then repaints all of the boxes.
+ */
+function repaintCanvas() {
+    // clear the canvas to not leave any straints
+    context.clearRect(0, 0, $canvas.width, $canvas.height);
+
+    // iterate through and draw all of the connections
+    for (const connection of store.connections) {
+        // later you could only draw the boxes in the viewport
+        connection.drawOnto(context);
+    }
+
+    for (const box of store.boxes) {
+        // later you could only draw the boxes in the viewport
+        box.drawOnto(context);
+    }
+}
+
+/**
+ * Deletes all event listeners and jumps out of the current user action.
+ */
+function resetAll() {
+    // reset everything if clicked nothing
+    store.dragging = false;
+    $canvas.removeEventListener("pointermove", startDrag);
+    $canvas.removeEventListener("pointermove", startDragSelectedBox);
+
+    store.selectedBox = null;
+
+    $canvas.removeEventListener("pointermove", startConnection);
+    store.connecting = ConnectionStates.NONE;
+
+    repaintCanvas();
+}
