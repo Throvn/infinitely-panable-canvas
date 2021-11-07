@@ -1,8 +1,16 @@
 import { v4 as uuidv4 } from "uuid";
 import Colors from "./colors";
 
+enum ClassTypes {
+    DEFAULT,
+    ABSTRACT,
+    INTERFACE,
+    ENUMERATION
+}
+
 interface FormData {
     title: string;
+    classType: ClassTypes;
     attributes: {
         modifier: string;
         head: string;
@@ -129,7 +137,7 @@ export class ClassBox extends Box {
     constructor(text: string, x: number, y: number, width: number, height?: number) {
         super(x - width * 0.5, y, width + ClassBox.xPadding, height || ClassBox.textHeight);
 
-        this.data = { title: text, attributes: [], methods: [] };
+        this.data = { title: text, classType: ClassTypes.INTERFACE, attributes: [], methods: [] };
         this.uuid = uuidv4;
     }
 
@@ -183,8 +191,12 @@ export class ClassBox extends Box {
         this.data.title = newTitle;
     }
 
+    setClassType(value: number) {
+        this.data.classType = value;
+    }
+
     /**
-     * Checks if coordinates are inside of the current box.
+     * Custom ClassBox impl. Checks if coordinates are inside of the current box.
      * @param x coordinate
      * @param y coordinate
      * @returns whether the coordinates match

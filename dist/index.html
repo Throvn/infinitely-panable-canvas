@@ -21,18 +21,24 @@
         </div>
         <div class="form-group">
             <label class="form-label">Class Type</label>
-            <label class="form-radio">
-                <input type="radio" name="gender" checked>
-                <i class="form-icon"></i> Abstract
-            </label>
-            <label class="form-radio">
-                <input type="radio" name="gender">
-                <i class="form-icon"></i> Interface
-            </label>
-            <label class="form-radio">
-                <input type="radio" name="gender">
-                <i class="form-icon"></i> Enumeration
-            </label>
+            <form name="classTypes" id="classTypes">
+                <label class="form-radio">
+                    <input value="0" type="radio" name="type">
+                    <i class="form-icon"></i> Default
+                </label>
+                <label class="form-radio">
+                    <input value="1" type="radio" name="type">
+                    <i class="form-icon"></i> Abstract
+                </label>
+                <label class="form-radio">
+                    <input value="2" type="radio" name="type">
+                    <i class="form-icon"></i> Interface
+                </label>
+                <label class="form-radio">
+                    <input value="3" type="radio" name="type">
+                    <i class="form-icon"></i> Enumeration
+                </label>
+            </form>
         </div>
         <div class="form-group">
             <label class="form-label" for="input-example-1">Attributes</label>

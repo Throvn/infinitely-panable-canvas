@@ -289,9 +289,23 @@ $className.addEventListener("input", (ev: Event) => {
     }
 });
 
+// listen for changed class type event and save in selectedBox data.
+// @ts-ignore
+document.classTypes.addEventListener("change", (ev: InputEvent) => {
+    if (store.selectedBox !== null && store.selectedBox instanceof ClassBox) {
+
+        // @ts-ignore
+        store.selectedBox.setClassType(document.classTypes.type.value);
+    }
+})
+
 function updateUi(selectedBox: Box) {
     console.log("updateUi")
     if (selectedBox instanceof ClassBox) {
         $className.value = selectedBox.getData.title;
+
+        // set the form accordingly
+        // @ts-ignore
+        document.classTypes.type.value = selectedBox.getData.classType;
     }
 }
